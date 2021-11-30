@@ -25,7 +25,7 @@ from ooi_harvester.config import (
     COMMIT_MESSAGE_TEMPLATE,
     STATUS_EMOJIS,
 )
-from ooi_harvester.utils.github import get_status_json, commit, push, create_request_commit_message
+from ooi_harvester.utils.github import get_status_json, commit_and_push, create_request_commit_message
 
 HERE = Path(__file__).parent.absolute()
 BASE = HERE.parent.absolute()
@@ -178,8 +178,7 @@ def main(data_check):
 
     # Commit to github
     commit_message = create_request_commit_message(status_json)
-    commit(message=commit_message)
-    push()
+    commit_and_push(commit_message)
 
 
 if __name__ == "__main__":
