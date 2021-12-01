@@ -25,7 +25,7 @@ from ooi_harvester.config import (
     COMMIT_MESSAGE_TEMPLATE,
     STATUS_EMOJIS,
 )
-from ooi_harvester.utils.github import get_status_json, commit_and_push, create_request_commit_message
+from ooi_harvester.utils.github import get_status_json, commit, push, create_request_commit_message
 
 HERE = Path(__file__).parent.absolute()
 BASE = HERE.parent.absolute()
@@ -105,11 +105,22 @@ def produce(data_check: bool, stream_harvest: StreamHarvest) -> dict:
         print("Requesting data ...")
         streams_list = fetch_streams_list(stream_harvest)
         request_dt = datetime.datetime.utcnow().isoformat()
+        stream_exists = True
         try:
             stream_dct = next(
                 filter(lambda s: s['table_name'] == table_name, streams_list)
             )
+        except Exception:
+            print("Stream not found in OOI Database.")
+            request_response = {
+                "message": f"{table_name} not found in OOI Database. It may be that this stream has been discontinued."  # noqa
+            }
+            status_json = get_status_json(
+                table_name, request_dt, 'discontinued'
+            )
+            stream_exists = False
 
+        if stream_exists:
             if stream_harvest.harvest_options.goldcopy:
                 try:
                     print("Fetching from OOI Gold Copy ...")
@@ -154,15 +165,6 @@ def produce(data_check: bool, stream_harvest: StreamHarvest) -> dict:
                         table_name, request_dt, 'failed'
                     )
 
-        except Exception:
-            print("Stream not found in OOI Database.")
-            request_response = {
-                "message": f"{table_name} not found in OOI Database. It may be that this stream has been discontinued."  # noqa
-            }
-            status_json = get_status_json(
-                table_name, request_dt, 'discontinued'
-            )
-
         print("Data Request completed.")
         RESPONSE_PATH.write_text(json.dumps(request_response))
 
@@ -178,7 +180,8 @@ def main(data_check):
 
     # Commit to github
     commit_message = create_request_commit_message(status_json)
-    commit_and_push(commit_message)
+    commit(message=commit_message)
+    push()
 
 
 if __name__ == "__main__":
